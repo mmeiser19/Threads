@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
             printf("msgq_show() after all consumed by test 1:\n");
             msgq_show(mq);
             break;
-        case '2':
+        case '2': //has a bug with passition
             printf("test fill msgs and pass it on\n");
             pthread_create(&p1, NULL, promtAndSend, NULL);
             pthread_join(p1, NULL);
