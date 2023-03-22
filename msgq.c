@@ -35,6 +35,7 @@ struct msgq *msgq_init(int num_msgs) {
  * -1 for failure
  */
 char msgq_send(struct msgq *mq, char *msg) {
+    pthread_mutex_lock(&mq->lock);
     char *msg_copy = strdup(msg);
     if (mq->num_msgs == 0) {
         mq->messages = malloc(sizeof(char*));
@@ -42,21 +43,24 @@ char msgq_send(struct msgq *mq, char *msg) {
         mq->num_msgs++;
     }
     else if (mq->num_msgs == mq->max_msgs) {
+        printf("Message queue is full\n");
+        pthread_mutex_unlock(&mq->lock);
         return -1; //msg was not sent
     }
     else {
-        pthread_mutex_lock(&mq->lock);
         mq->messages = realloc(mq->messages, sizeof(char*) * (mq->num_msgs + 1));
         mq->messages[mq->num_msgs] = msg_copy;
         mq->num_msgs++;
-        pthread_mutex_unlock(&mq->lock);
     }
     //check if msg was sent
     for (int i = 0; i < mq->max_msgs; i++) {
         if (mq->messages[i] == msg_copy) {
+            pthread_mutex_unlock(&mq->lock);
             return 1; //msg was sent
         }
     }
+    printf("Message was not sent\n");
+    pthread_mutex_unlock(&mq->lock);
     return -1; //msg was not sent
 }
 
