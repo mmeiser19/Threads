@@ -5,13 +5,16 @@
 #include <semaphore.h>
 #include <string.h>
 #include "msgq.h"
+#include <time.h>
 
-#define BUFFER_SIZE 15
-#define NUM_MESSAGES 5
+#define BUFFER_SIZE 100
+#define NUM_MESSAGES 50
 
 // SEE Labs/GdbLldbLab for more information on lldb - lowlevel debugger
 
 struct msgq *mq;
+
+static int msg_num = 0;
 
 // Define the semaphores
 sem_t empty;
@@ -48,15 +51,15 @@ void insert_buffer(char* message) {
 void *producer() {
     char message[20];
     for (int i = 0; i < NUM_MESSAGES; i++) {
-        produce_message(message, i);
+        produce_message(message, msg_num++);
 
         sem_wait(&empty);
         pthread_mutex_lock(&mutex);
-        printf("Producer Lock\n");
+        //printf("Producer Lock\n");
 
         insert_buffer(message);
 
-        printf("producer unlock\n");
+        //printf("producer unlock\n");
         pthread_mutex_unlock(&mutex);
         sem_post(&full);
     }
@@ -80,15 +83,24 @@ char* remove_buffer() {
 void *consumer(void *arg) {
     char* message;
     //i is not reaching NUM_MESSAGES when there are more consumers than producers due to i's in threads being independent of each other
-    for (int i = 0; i < NUM_MESSAGES; i++) {
-        sem_wait(&full);
+    while (1) {
+        struct timespec ts;
+        if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
+            perror("clock_gettime");
+            exit(EXIT_FAILURE);
+        }
+        ts.tv_sec += 1; //this controls how long to wait, change int if needed
+        int waitstat = sem_timedwait(&full, &ts);
+        if (waitstat == -1) {
+            break;
+        }
         pthread_mutex_lock(&mutex);
-        printf("Consumer Lock\n");
+        //printf("Consumer Lock\n");
 
         message = remove_buffer();
         consume_message(message);
 
-        printf("Consumer unlock %d\n", i);
+        //printf("Consumer unlock %d\n",waitstat);
         pthread_mutex_unlock(&mutex);
         sem_post(&empty);
     }
@@ -142,6 +154,9 @@ void *passiton(void *arg) {
 int main(int argc, char *argv[]) {
     pthread_t p1, p2;
     mq = msgq_init(MSGQLEN);
+
+    //struct timespec ts;
+
     char test = '1';
     if (argc == 2)
         test = argv[1][0];
