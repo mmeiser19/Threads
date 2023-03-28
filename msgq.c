@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
@@ -34,7 +33,7 @@ struct msgq *msgq_init(int num_msgs) {
  * If mq has num_msgs in it; then msgq_send blocks until there is room for msg. msgq_send returns 1 for success and
  * -1 for failure
  */
-char msgq_send(struct msgq *mq, char *msg) {
+int msgq_send(struct msgq *mq, char *msg) {
     pthread_mutex_lock(&mq->lock);
     char *msg_copy = strdup(msg);
     if (mq->num_msgs == 0) {
