@@ -26,30 +26,19 @@ char *threadMsgs[3][NUM_MESSAGES * 2];
 sem_t empty;
 sem_t full;
 
-//initialize buffer
-char *buffer[BUFFER_SIZE];
-
-int in = 0, out = 0; //buffer indices
-
 char *messages[] = { "msg1", "msg2", "hellomsg", "gustymsg" };
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-void produce_message(char* message, int num) {
-    sprintf(message, "%d", num);
-}
 
 // Define the producer function
 void *producer() {
     char message[20];
     for (int i = 0; i < NUM_MESSAGES; i++) {
-        produce_message(message, msg_num++);
-
         sem_wait(&empty);
         pthread_mutex_lock(&mutex);
-        msgq_send(mq, message);
 
-        //insert_buffer(message);
+        sprintf(message, "%d", msg_num++);
+        msgq_send(mq, message);
 
         pthread_mutex_unlock(&mutex);
         sem_post(&full);
@@ -60,11 +49,10 @@ void *producer() {
 // Define the consumer function
 void *consumer(void *arg) {
     pthread_mutex_lock(&mutex);
-    //get name from namearray
-    char *name = namearray[nameassign];
+    char *name = namearray[nameassign]; //get name from namearray
     nameassign += 1;
     pthread_mutex_unlock(&mutex);
-    char* message;
+
     //for(int i = 0; i < NUM_MESSAGES; i++) {
     while (1) {
         struct timespec ts;
@@ -79,7 +67,7 @@ void *consumer(void *arg) {
         }
         pthread_mutex_lock(&mutex);
 
-        message = msgq_recv(mq);
+        char *message = msgq_recv(mq);
         printf("%s: %s\n", name, message);
 
         pthread_mutex_unlock(&mutex);
