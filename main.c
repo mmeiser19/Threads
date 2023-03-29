@@ -12,15 +12,9 @@
 #define MSGQLEN 4
 
 struct msgq *mq;
-static int msg_num = 0; //used to assign message numbers for test 3
-static int nameassign = 0; //used to assign names for test 3
-//consumer name generator
-char *namearray[3] = { "Alpha", "Bravo", "Charlie"};
-//array of 3 arrays to hold messages
-char *threadMsgs[3][NUM_MESSAGES * 2];
-
-//create an array that can hold 3 nested arrays that hold up to 100 elements
-//char *threadMsgs[3][BUFFER_SIZE];
+static int msg_num = 0; // Used to assign message numbers for test 3 to show that the messages were produced and consumed in order
+char *namearray[3] = { "Alpha", "Bravo", "Charlie"}; // Array of consumer names for test 3
+char *consumerMsgs[3][BUFFER_SIZE]; // Array of arrays to hold messages for each consumer
 
 // Define the semaphores
 sem_t empty;
@@ -43,37 +37,41 @@ void *producer() {
         pthread_mutex_unlock(&mutex);
         sem_post(&full);
     }
-    pthread_exit(NULL);
+    return NULL;
 }
 
-// Define the consumer function
+/*
+ * Consumer function that consumes messages from the message queue and inserts them into a static 2D array for later
+ * use to show which consumers consumed which messages
+ */
 void *consumer(void *arg) {
     pthread_mutex_lock(&mutex);
-    char *name = namearray[nameassign]; //get name from namearray
-    nameassign += 1;
+    int i = (int)arg; // Consumer number used to insert messages into array correct index of consumerMsgs
+    int currIndex = 0; // Index of array for the message to be inserted into
     pthread_mutex_unlock(&mutex);
 
-    //for(int i = 0; i < NUM_MESSAGES; i++) {
     while (1) {
+        // Wait for a message to be available
         struct timespec ts;
         if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
             perror("clock_gettime");
             exit(EXIT_FAILURE);
         }
-        ts.tv_sec += 1; //this controls how long to wait, change int if needed
+        ts.tv_sec += 1; // This controls how long to wait for a message
         int waitstat = sem_timedwait(&full, &ts);
         if (waitstat == -1) {
             break;
         }
+
+        // When a message is available, consume it
         pthread_mutex_lock(&mutex);
-
         char *message = msgq_recv(mq);
-        printf("%s: %s\n", name, message);
-
+        consumerMsgs[i][currIndex] = strdup(message); // Add message to array
+        currIndex += 1; // Increment index for next message
         pthread_mutex_unlock(&mutex);
         sem_post(&empty);
     }
-    pthread_exit(NULL);
+    return NULL;
 }
 
 // sends msgs in messages[]
@@ -149,56 +147,51 @@ int main(int argc, char *argv[]) {
             pthread_join(p2, NULL);
             break;
         case '3':
-            //initialize a msgq of size 100
-            mq = msgq_init(100);
+            mq = msgq_init(100); // Initialize the message queue with a size of 100
 
-            // Initialize the semaphores
+            // Initialize semaphores
             sem_init(&empty, 0, BUFFER_SIZE);
             sem_init(&full, 0, 0);
 
-            // Create the producer threads
+            // Create producer threads
             printf("Creating producers\n");
             pthread_t prod1, prod2;
-            int prod_id1 = 1, prod_id2 = 2;
-            pthread_create(&prod1, NULL, producer, &prod_id1);
-            pthread_create(&prod2, NULL, producer, &prod_id2);
+            pthread_create(&prod1, NULL, producer, NULL);
+            pthread_create(&prod2, NULL, producer, NULL);
 
-            // Wait for the producer threads to finish
+            // Wait for the producers to finish
             pthread_join(prod1, NULL);
             pthread_join(prod2, NULL);
             printf("Producers finished\n");
 
-            // Wait for 5 seconds
+            // Sleep for 5 seconds after producers are done
             printf("Waiting for 5 seconds\n");
             sleep(5);
 
-            // Create the consumer threads
+            // Create consumer threads
             printf("Creating consumers\n");
             pthread_t cons1, cons2, cons3;
-            int cons_id1 = 1, cons_id2 = 2, cons_id3 = 3;
-            char *thread1[100];
-            char *thread2[100];
-            char *thread3[100];
-            pthread_create(&cons1, NULL, consumer, &cons_id1);
-            pthread_create(&cons2, NULL, consumer, &cons_id2);
-            pthread_create(&cons3, NULL, consumer, &cons_id3);
+            pthread_create(&cons1, NULL, consumer, (void *)0);
+            pthread_create(&cons2, NULL, consumer, (void *)1);
+            pthread_create(&cons3, NULL, consumer, (void *)2);
 
-            // Wait for the consumer threads to finish
+            // Wait for the consumers to finish
             pthread_join(cons1, NULL);
             pthread_join(cons2, NULL);
             pthread_join(cons3, NULL);
             printf("Consumers finished\n");
             printf("\n");
 
-            //print the contents of each nested array of threadMsgs along with the name of the thread
-            /*for (int i = 0; i < 3; i++) {
-                //print the name of the thread
+            // Print the messages consumed by each consumer
+            for (int i = 0; i < 3; i++) {
+                int length = 0;
                 printf("%s: ", namearray[i]);
-                for (int j = 0; j < NUM_MESSAGES; j++) {
-                    printf("%c", threadMsgs[i][j]); //not printing contents correctly
+                while (consumerMsgs[i][length] != NULL) {
+                    printf("%s, ", consumerMsgs[i][length]);
+                    length += 1;
                 }
                 printf("\n");
-            }*/
+            }
 
             // Clean up the semaphores and exit
             sem_destroy(&empty);
