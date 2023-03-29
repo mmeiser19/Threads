@@ -21,8 +21,8 @@ struct msgq {
  */
 struct msgq *msgq_init(int num_msgs) {
     struct msgq *mq = malloc(sizeof(struct msgq));
-    mq->num_msgs = 0;
-    mq->max_msgs = num_msgs;
+    mq->num_msgs = 0; // Initializes an empty message queue
+    mq->max_msgs = num_msgs; // Sets the maximum number of messages to the number of current messages in the queue
     return mq;
 }
 
@@ -48,6 +48,12 @@ int msgq_send(struct msgq *mq, char *msg) {
         mq->messages = realloc(mq->messages, sizeof(char*) * (mq->num_msgs + 1));
         mq->messages[mq->num_msgs] = msg_copy;
         mq->num_msgs++;
+        if (mq->num_msgs == mq->max_msgs) {
+            printf("\n");
+            printf("Message queue is now full\n");
+            printf("Blocking msgq_send until a message is received\n");
+            printf("\n");
+        }
     }
     // Check if msg was sent
     for (int i = 0; i < mq->max_msgs; i++) {

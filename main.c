@@ -24,7 +24,9 @@ char *messages[] = { "msg1", "msg2", "hellomsg", "gustymsg" };
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// Define the producer function
+/*
+ * Producer function that produces messages and sends them to the message queue
+ */
 void *producer() {
     char message[20];
     for (int i = 0; i < NUM_MESSAGES; i++) {
@@ -96,7 +98,12 @@ void *recvMsgs(void *arg) {
     for (int i = 0; i < msg_count; i++) {
         char *m = msgq_recv(mq);
         printf("recvMsgs: %s\n", m);
-        //free(m);
+        free(m);
+        if (msgq_len(mq) == 0) {
+            printf("\n");
+            printf("Message queue is now empty\n");
+            printf("Blocking msgq_recv until a message is sent\n");
+        }
     }
     return NULL;
 }
@@ -181,6 +188,12 @@ int main(int argc, char *argv[]) {
             pthread_join(cons3, NULL);
             printf("Consumers finished\n");
             printf("\n");
+
+            if (msgq_len(mq) == 0) {
+                printf("Message queue is now empty\n");
+                printf("Blocking msgq_recv until a message is sent\n");
+                printf("\n");
+            }
 
             // Print the messages consumed by each consumer
             for (int i = 0; i < 3; i++) {
