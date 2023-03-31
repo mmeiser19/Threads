@@ -162,18 +162,10 @@ int main(int argc, char *argv[]) {
 
             // Create producer threads
             printf("Creating producers\n");
+            printf("Filling up message queue\n");
             pthread_t prod1, prod2;
             pthread_create(&prod1, NULL, producer, NULL);
             pthread_create(&prod2, NULL, producer, NULL);
-
-            // Wait for the producers to finish
-            pthread_join(prod1, NULL);
-            pthread_join(prod2, NULL);
-            printf("Producers finished\n");
-
-            // Sleep for 5 seconds after producers are done
-            printf("Waiting for 5 seconds\n");
-            sleep(5);
 
             // Create consumer threads
             printf("Creating consumers\n");
@@ -182,12 +174,16 @@ int main(int argc, char *argv[]) {
             pthread_create(&cons2, NULL, consumer, (void *)1);
             pthread_create(&cons3, NULL, consumer, (void *)2);
 
-            // Wait for the consumers to finish
+            // Join the producers
+            pthread_join(prod1, NULL);
+            pthread_join(prod2, NULL);
+            printf("Producers finished\n");
+
+            // Join the consumers
             pthread_join(cons1, NULL);
             pthread_join(cons2, NULL);
             pthread_join(cons3, NULL);
             printf("Consumers finished\n");
-            printf("\n");
 
             if (msgq_len(mq) == 0) {
                 printf("Message queue is now empty\n");
